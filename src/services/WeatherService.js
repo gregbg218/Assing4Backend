@@ -41,24 +41,121 @@ class WeatherService {
 
   async getForecastData(latitude, longitude) {
     try {
-      const response = await axios.get(this.baseUrl, {
-        params: {
+      const options = {
+        method: 'POST',
+        headers: {
+          'accept': 'application/json',
+          'Accept-Encoding': 'gzip',
+          'content-type': 'application/json'
+        },
+        data: {
           location: `${latitude},${longitude}`,
-          apikey: this.apiKey,
-          units: 'imperial',
-          timesteps: '1d',
-          timezone: 'America/Los_Angeles',
           fields: [
             'temperature',
             'temperatureMax',
             'temperatureMin',
             'windSpeed',
             'weatherCode'
-          ]
+          ],
+          units: 'imperial',
+          timesteps: ['1d'],
+
         }
+      };
+
+      const response = await axios.post(`${this.baseUrl}?apikey=${this.apiKey}`, options.data, {
+        headers: options.headers
       });
 
       return this.transformForecastData(response.data.data);
+    } catch (error) {
+      console.error('API Error Details:', error.response?.data);
+      throw error;
+    }
+  }
+
+  async getDayWeatherData(latitude, longitude, targetDate) {
+    try {
+      const options = {
+        method: 'POST',
+        headers: {
+          'accept': 'application/json',
+          'Accept-Encoding': 'gzip',
+          'content-type': 'application/json'
+        },
+        data: {
+          location: `${latitude},${longitude}`,
+          fields: [
+            'weatherCode',
+            'temperatureMax',
+            'temperatureMin',
+            'temperatureApparent',
+            'windSpeed',
+            'humidity',
+            'visibility',
+            'cloudCover',
+            'sunriseTime',
+            'sunsetTime'
+          ],
+          units: 'imperial',
+          timesteps: ['1d'],
+          
+        }
+      };
+
+      const response = await axios.post(`${this.baseUrl}?apikey=${this.apiKey}`, options.data, {
+        headers: options.headers
+      });
+
+      if (!response.data?.data?.timelines?.[0]?.intervals) {
+        throw new Error('Unexpected API response structure');
+      }
+
+      // Find the interval matching our target date using UTC comparison
+      const targetInterval = response.data.data.timelines[0].intervals.find(interval => {
+        const intervalDate = new Date(interval.startTime);
+        const requestDate = new Date(targetDate);
+        return (
+          intervalDate.getUTCFullYear() === requestDate.getUTCFullYear() &&
+          intervalDate.getUTCMonth() === requestDate.getUTCMonth() &&
+          intervalDate.getUTCDate() === requestDate.getUTCDate()
+        );
+      });
+
+      if (!targetInterval) {
+        throw new Error('No data available for the requested date');
+      }
+
+      const dayData = targetInterval.values;
+      const date = new Date(targetDate);
+      date.setDate(date.getDate() + 1);
+      const formattedDate = date.toLocaleDateString('en-US', {
+        weekday: 'long',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      }).replace(',', '').replace('.', '');
+      return {
+        date: formattedDate,
+        status: getWeatherDescriptionFromCode(dayData.weatherCode.toString()),
+        maxTemperature: dayData.temperatureMax?.toFixed(2),
+        minTemperature: dayData.temperatureMin?.toFixed(2),
+        apparentTemperature: dayData.temperatureApparent?.toFixed(2) || 'N/A',
+        sunriseTime: dayData.sunriseTime ? new Date(dayData.sunriseTime).toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: 'numeric',
+          hour12: true
+        }) : 'N/A',
+        sunsetTime: dayData.sunsetTime ? new Date(dayData.sunsetTime).toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: 'numeric',
+          hour12: true
+        }) : 'N/A',
+        humidity: dayData.humidity?.toFixed(2) || 'N/A',
+        windSpeed: dayData.windSpeed?.toFixed(2),
+        visibility: dayData.visibility?.toFixed(2) || 'N/A',
+        cloudCover: dayData.cloudCover || 'N/A'
+      };
     } catch (error) {
       console.error('API Error Details:', error.response?.data);
       throw error;
@@ -87,87 +184,6 @@ class WeatherService {
         windSpeed: values.windSpeed.toFixed(2)
       };
     });
-  }
-
-  async getDayWeatherData(latitude, longitude, targetDate) {
-    try {
-      const response = await axios.get(this.baseUrl, {
-        params: {
-          location: `${latitude},${longitude}`,
-          apikey: this.apiKey,
-          units: 'imperial',
-          timesteps: '1d',
-          timezone: 'America/Los_Angeles',
-          fields: [
-            'weatherCode',
-            'temperatureMax',
-            'temperatureMin',
-            'temperatureApparent',
-            'windSpeed',
-            'humidity',
-            'visibility',
-            'cloudCover',
-            'sunriseTime',
-            'sunsetTime'
-          ]
-        }
-      });
-  
-      if (!response.data?.data?.timelines?.[0]?.intervals) {
-        throw new Error('Unexpected API response structure');
-      }
-  
-      // Find the interval matching our target date using UTC comparison
-      const targetInterval = response.data.data.timelines[0].intervals.find(interval => {
-        const intervalDate = new Date(interval.startTime);
-        const requestDate = new Date(targetDate);
-        return (
-          intervalDate.getUTCFullYear() === requestDate.getUTCFullYear() &&
-          intervalDate.getUTCMonth() === requestDate.getUTCMonth() &&
-          intervalDate.getUTCDate() === requestDate.getUTCDate()
-        );
-      });
-  
-      if (!targetInterval) {
-        throw new Error('No data available for the requested date');
-      }
-  
-      const dayData = targetInterval.values;
-      
-      const date = new Date("2024-11-13T00:00:00.000Z");
-      date.setDate(date.getDate() + 1);  // Add one day
-      const formattedDate = date.toLocaleDateString('en-US', {
-        weekday: 'long',
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric'
-      }).replace(',', '').replace('.', '');
-        
-      return {
-        date: formattedDate,
-        status: getWeatherDescriptionFromCode(dayData.weatherCode.toString()),
-        maxTemperature: dayData.temperatureMax?.toFixed(2),
-        minTemperature: dayData.temperatureMin?.toFixed(2),
-        apparentTemperature: dayData.temperatureApparent?.toFixed(2) || 'N/A',
-        sunriseTime: dayData.sunriseTime ? new Date(dayData.sunriseTime).toLocaleTimeString('en-US', {
-          hour: 'numeric',
-          minute: 'numeric',
-          hour12: true
-        }) : 'N/A',
-        sunsetTime: dayData.sunsetTime ? new Date(dayData.sunsetTime).toLocaleTimeString('en-US', {
-          hour: 'numeric',
-          minute: 'numeric',
-          hour12: true
-        }) : 'N/A',
-        humidity: dayData.humidity?.toFixed(2) || 'N/A',
-        windSpeed: dayData.windSpeed?.toFixed(2),
-        visibility: dayData.visibility?.toFixed(2) || 'N/A',
-        cloudCover: dayData.cloudCover || 'N/A'
-      };
-    } catch (error) {
-      console.error('API Error Details:', error.response?.data);
-      throw error;
-    }
   }
 }
 
