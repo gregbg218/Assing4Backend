@@ -47,6 +47,7 @@ class WeatherService {
           apikey: this.apiKey,
           units: 'imperial',
           timesteps: '1d',
+          timezone: 'America/Los_Angeles',
           fields: [
             'temperature',
             'temperatureMax',
@@ -90,31 +91,19 @@ class WeatherService {
 
   async getDayWeatherData(latitude, longitude, targetDate) {
     try {
-      // Create date object for the target date and set to noon UTC
-      const requestDate = new Date(targetDate);
-      requestDate.setUTCHours(12, 0, 0, 0);
-
-      // Create time window for the full day (36 hours to ensure coverage)
-      const startTime = new Date(requestDate);
-      startTime.setUTCHours(-12, 0, 0, 0); // Start 12 hours before noon
-      const endTime = new Date(requestDate);
-      endTime.setUTCHours(36, 0, 0, 0);  // End 36 hours after start
-
       const response = await axios.get(this.baseUrl, {
         params: {
           location: `${latitude},${longitude}`,
           apikey: this.apiKey,
           units: 'imperial',
           timesteps: '1d',
-          startTime: startTime.toISOString(),
-          endTime: endTime.toISOString(),
+          timezone: 'America/Los_Angeles',
           fields: [
-            'temperature',
+            'weatherCode',
             'temperatureMax',
             'temperatureMin',
             'temperatureApparent',
             'windSpeed',
-            'weatherCode',
             'humidity',
             'visibility',
             'cloudCover',
@@ -123,35 +112,43 @@ class WeatherService {
           ]
         }
       });
-
-      if (!response.data?.data?.timelines?.[0]?.intervals?.[0]) {
+  
+      if (!response.data?.data?.timelines?.[0]?.intervals) {
         throw new Error('Unexpected API response structure');
       }
-
-      // Get the correct interval for our target date
-      const intervals = response.data.data.timelines[0].intervals;
-      const targetInterval = intervals.find(interval => {
+  
+      // Find the interval matching our target date using UTC comparison
+      const targetInterval = response.data.data.timelines[0].intervals.find(interval => {
         const intervalDate = new Date(interval.startTime);
-        return intervalDate.toISOString().split('T')[0] === requestDate.toISOString().split('T')[0];
+        const requestDate = new Date(targetDate);
+        return (
+          intervalDate.getUTCFullYear() === requestDate.getUTCFullYear() &&
+          intervalDate.getUTCMonth() === requestDate.getUTCMonth() &&
+          intervalDate.getUTCDate() === requestDate.getUTCDate()
+        );
       });
-
+  
       if (!targetInterval) {
         throw new Error('No data available for the requested date');
       }
-
+  
       const dayData = targetInterval.values;
-
+      
+      const date = new Date("2024-11-13T00:00:00.000Z");
+      date.setDate(date.getDate() + 1);  // Add one day
+      const formattedDate = date.toLocaleDateString('en-US', {
+        weekday: 'long',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      }).replace(',', '').replace('.', '');
+        
       return {
-        date: requestDate.toLocaleDateString('en-US', {
-          weekday: 'long',
-          month: 'short',
-          day: 'numeric',
-          year: 'numeric'
-        }),
+        date: formattedDate,
         status: getWeatherDescriptionFromCode(dayData.weatherCode.toString()),
         maxTemperature: dayData.temperatureMax?.toFixed(2),
         minTemperature: dayData.temperatureMin?.toFixed(2),
-        apparentTemperature: dayData.temperatureApparent?.toFixed(2),
+        apparentTemperature: dayData.temperatureApparent?.toFixed(2) || 'N/A',
         sunriseTime: dayData.sunriseTime ? new Date(dayData.sunriseTime).toLocaleTimeString('en-US', {
           hour: 'numeric',
           minute: 'numeric',
@@ -162,10 +159,10 @@ class WeatherService {
           minute: 'numeric',
           hour12: true
         }) : 'N/A',
-        humidity: dayData.humidity?.toFixed(2),
+        humidity: dayData.humidity?.toFixed(2) || 'N/A',
         windSpeed: dayData.windSpeed?.toFixed(2),
-        visibility: dayData.visibility?.toFixed(2),
-        cloudCover: dayData.cloudCover || 0
+        visibility: dayData.visibility?.toFixed(2) || 'N/A',
+        cloudCover: dayData.cloudCover || 'N/A'
       };
     } catch (error) {
       console.error('API Error Details:', error.response?.data);
