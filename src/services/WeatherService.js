@@ -39,7 +39,7 @@ class WeatherService {
     this.baseUrl = 'https://api.tomorrow.io/v4/timelines';
   }
 
-   async getForecastData(latitude, longitude) {
+  async getForecastData(latitude, longitude) {
     try {
       const response = await axios.get(this.baseUrl, {
         params: {
@@ -90,32 +90,24 @@ class WeatherService {
 
   async getDayWeatherData(latitude, longitude, targetDate) {
     try {
-      // Convert target date to start of day in UTC
-      const startDate = new Date(targetDate);
-      startDate.setUTCHours(0, 0, 0, 0);
-      
-      // Set end date to start of next day
-      const endDate = new Date(targetDate);
-      endDate.setUTCHours(23, 59, 59, 999);
-      endDate.setDate(endDate.getDate() + 1);  // Add one day to make window bigger than timestep
+      // Create date object for the target date and set to noon UTC
+      const requestDate = new Date(targetDate);
+      requestDate.setUTCHours(12, 0, 0, 0);
 
-      // If target date is more than 24 hours in past, adjust to current time
-      const now = new Date();
-      const yesterday = new Date(now);
-      yesterday.setDate(yesterday.getDate() - 1);
-      
-      if (startDate < yesterday) {
-        startDate.setTime(yesterday.getTime());
-        endDate.setTime(now.getTime());
-      }
+      // Create time window for the full day (36 hours to ensure coverage)
+      const startTime = new Date(requestDate);
+      startTime.setUTCHours(-12, 0, 0, 0); // Start 12 hours before noon
+      const endTime = new Date(requestDate);
+      endTime.setUTCHours(36, 0, 0, 0);  // End 36 hours after start
 
-      // Make one API call with daily timesteps since some fields are only available in daily
       const response = await axios.get(this.baseUrl, {
         params: {
           location: `${latitude},${longitude}`,
           apikey: this.apiKey,
           units: 'imperial',
-          timesteps: '1d,1h',
+          timesteps: '1d',
+          startTime: startTime.toISOString(),
+          endTime: endTime.toISOString(),
           fields: [
             'temperature',
             'temperatureMax',
@@ -136,11 +128,21 @@ class WeatherService {
         throw new Error('Unexpected API response structure');
       }
 
-      const dayData = response.data.data.timelines[0].intervals[0].values;
-      const date = new Date(response.data.data.timelines[0].intervals[0].startTime);
+      // Get the correct interval for our target date
+      const intervals = response.data.data.timelines[0].intervals;
+      const targetInterval = intervals.find(interval => {
+        const intervalDate = new Date(interval.startTime);
+        return intervalDate.toISOString().split('T')[0] === requestDate.toISOString().split('T')[0];
+      });
+
+      if (!targetInterval) {
+        throw new Error('No data available for the requested date');
+      }
+
+      const dayData = targetInterval.values;
 
       return {
-        date: date.toLocaleDateString('en-US', {
+        date: requestDate.toLocaleDateString('en-US', {
           weekday: 'long',
           month: 'short',
           day: 'numeric',
@@ -169,9 +171,7 @@ class WeatherService {
       console.error('API Error Details:', error.response?.data);
       throw error;
     }
-}
-
-
+  }
 }
 
 module.exports = WeatherService;
