@@ -11,7 +11,7 @@ class WeatherController {
       
       if (!latitude || !longitude) {
         return res.status(400).json({ 
-          error: 'Latitude and longitude are required' 
+          error: 'Latitude and longitude are required'
         });
       }
 
@@ -20,9 +20,9 @@ class WeatherController {
         longitude
       );
       
-      res.json({ 
+      res.json({
         success: true,
-        data: forecast 
+        data: forecast
       });
     } catch (error) {
       console.error('Forecast error:', error);
@@ -34,7 +34,7 @@ class WeatherController {
         });
       }
 
-      res.status(500).json({ 
+      res.status(500).json({
         success: false,
         error: 'Error fetching weather forecast',
         message: error.message
@@ -48,13 +48,13 @@ class WeatherController {
       
       if (!latitude || !longitude) {
         return res.status(400).json({ 
-          error: 'Latitude and longitude are required' 
+          error: 'Latitude and longitude are required'
         });
       }
 
       if (!date) {
         return res.status(400).json({ 
-          error: 'Date is required' 
+          error: 'Date is required'
         });
       }
 
@@ -62,7 +62,7 @@ class WeatherController {
       const targetDate = new Date(date);
       if (isNaN(targetDate.getTime())) {
         return res.status(400).json({ 
-          error: 'Invalid date format. Please use YYYY-MM-DD' 
+          error: 'Invalid date format. Please use YYYY-MM-DD'
         });
       }
 
@@ -72,9 +72,9 @@ class WeatherController {
         targetDate
       );
       
-      res.json({ 
+      res.json({
         success: true,
-        data: dayWeather 
+        data: dayWeather
       });
     } catch (error) {
       console.error('Day weather error:', error);
@@ -86,9 +86,46 @@ class WeatherController {
         });
       }
 
-      res.status(500).json({ 
+      res.status(500).json({
         success: false,
         error: 'Error fetching day weather data',
+        message: error.message
+      });
+    }
+  }
+
+  async getMeteogramData(req, res) {
+    try {
+      const { latitude, longitude } = req.query;
+      
+      if (!latitude || !longitude) {
+        return res.status(400).json({ 
+          error: 'Latitude and longitude are required'
+        });
+      }
+
+      const meteogramData = await this.weatherService.getMeteogramData(
+        latitude, 
+        longitude
+      );
+      
+      res.json({
+        success: true,
+        data: meteogramData
+      });
+    } catch (error) {
+      console.error('Meteogram error:', error);
+      
+      if (error.response?.status === 401) {
+        return res.status(401).json({
+          success: false,
+          error: 'API Key is invalid or not properly configured'
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        error: 'Error fetching meteogram data',
         message: error.message
       });
     }

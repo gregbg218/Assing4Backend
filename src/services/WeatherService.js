@@ -59,7 +59,6 @@ class WeatherService {
           ],
           units: 'imperial',
           timesteps: ['1d'],
-
         }
       };
 
@@ -99,7 +98,6 @@ class WeatherService {
           ],
           units: 'imperial',
           timesteps: ['1d'],
-          
         }
       };
 
@@ -111,7 +109,6 @@ class WeatherService {
         throw new Error('Unexpected API response structure');
       }
 
-      // Find the interval matching our target date using UTC comparison
       const targetInterval = response.data.data.timelines[0].intervals.find(interval => {
         const intervalDate = new Date(interval.startTime);
         const requestDate = new Date(targetDate);
@@ -135,6 +132,7 @@ class WeatherService {
         day: 'numeric',
         year: 'numeric'
       }).replace(',', '').replace('.', '');
+      
       return {
         date: formattedDate,
         status: getWeatherDescriptionFromCode(dayData.weatherCode.toString()),
@@ -160,6 +158,95 @@ class WeatherService {
       console.error('API Error Details:', error.response?.data);
       throw error;
     }
+  }
+
+  async getMeteogramData(latitude, longitude) {
+    try {
+      const options = {
+        method: 'POST',
+        headers: {
+          'accept': 'application/json',
+          'Accept-Encoding': 'gzip',
+          'content-type': 'application/json'
+        },
+        data: {
+          location: `${latitude},${longitude}`,
+          fields: [
+            'temperature',
+            'humidity',
+            'pressureSeaLevel',
+            'windSpeed',
+            'windDirection',
+            'cloudCover',
+            'precipitationProbability',
+            'weatherCode'
+          ],
+          units: 'imperial',
+          timesteps: ['1h'],
+          startTime: 'now',
+          endTime: 'nowPlus5d'
+        }
+      };
+
+      const response = await axios.post(`${this.baseUrl}?apikey=${this.apiKey}`, options.data, {
+        headers: options.headers
+      });
+
+      if (!response.data?.data?.timelines?.[0]?.intervals) {
+        throw new Error('Unexpected API response structure');
+      }
+
+      return this.transformMeteogramData(response.data.data.timelines[0].intervals);
+    } catch (error) {
+      console.error('API Error Details:', error.response?.data);
+      throw error;
+    }
+  }
+
+  transformMeteogramData(intervals) {
+    const times = [];
+    const temperatures = [];
+    const humidity = [];
+    const pressure = [];
+    const winds = [];
+
+    intervals.forEach((interval, index) => {
+      const time = new Date(interval.startTime).getTime();
+      const values = interval.values;
+
+      times.push(time);
+      temperatures.push({
+        x: time,
+        y: values.temperature
+      });
+
+      humidity.push({
+        x: time,
+        y: values.humidity
+      });
+
+      pressure.push({
+        x: time,
+        y: values.pressureSeaLevel
+      });
+
+      // Add wind data every 2 hours
+      if (index % 2 === 0) {
+        winds.push({
+          x: time,
+          value: values.windSpeed,
+          direction: values.windDirection
+        });
+      }
+    });
+
+    return {
+      times,
+      temperatures,
+      humidity,
+      pressure,
+      winds
+    };
   }
 
   transformForecastData(data) {
