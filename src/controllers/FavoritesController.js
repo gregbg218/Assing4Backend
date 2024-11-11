@@ -1,6 +1,9 @@
 // src/controllers/FavoritesController.js
 class FavoritesController {
     constructor(mongoService) {
+      if (!mongoService) {
+        throw new Error('MongoService is required');
+      }
       this.mongoService = mongoService;
     }
   
@@ -31,6 +34,7 @@ class FavoritesController {
     async addFavorite(req, res) {
       try {
         const { city, state } = req.body;
+        console.log('Adding favorite:', { city, state });
         if (!city || !state) {
           return res.status(400).json({ error: 'City and state are required' });
         }

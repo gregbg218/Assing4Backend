@@ -5,8 +5,10 @@ const dotenv = require('dotenv');
 const WeatherRoutes = require('./src/routes/WeatherRoutes');
 const mongoService = require('./src/services/MongoService');
 
+// Load environment variables
 dotenv.config();
 
+// Create express app
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -37,4 +39,5 @@ async function startServer() {
   }
 }
 
+// Start the server
 startServer();

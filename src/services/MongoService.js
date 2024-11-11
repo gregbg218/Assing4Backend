@@ -1,3 +1,4 @@
+// src/services/MongoService.js
 const { MongoClient } = require('mongodb');
 
 class MongoService {
@@ -8,23 +9,17 @@ class MongoService {
   }
 
   async connect() {
-    if (!this.client) {
-      try {
-        this.client = await MongoClient.connect(this.uri, {
-          useNewUrlParser: true,
-          useUnifiedTopology: true
-        });
-        this.db = this.client.db('weather_app'); // specify your database name
-        console.log('MongoDB connected successfully');
-      } catch (error) {
-        console.error('MongoDB connection error:', error);
-        throw error;
-      }
+    try {
+      this.client = await MongoClient.connect(this.uri);
+      this.db = this.client.db('hw3');
+      console.log('MongoDB connected successfully');
+    } catch (error) {
+      console.error('MongoDB connection error:', error);
+      throw error;
     }
-    return this.db;
   }
 
-  async getDB() {
+  async ensureConnection() {
     if (!this.db) {
       await this.connect();
     }
@@ -32,26 +27,27 @@ class MongoService {
   }
 
   async getFavorites() {
-    const db = await this.getDB();
+    const db = await this.ensureConnection();
     return await db.collection('favorites').find().toArray();
   }
 
   async addFavorite(city, state) {
-    const db = await this.getDB();
+    const db = await this.ensureConnection();
     return await db.collection('favorites').insertOne({ city, state });
   }
 
   async removeFavorite(city, state) {
-    const db = await this.getDB();
+    const db = await this.ensureConnection();
     return await db.collection('favorites').deleteOne({ city, state });
   }
 
   async checkFavorite(city, state) {
-    const db = await this.getDB();
+    const db = await this.ensureConnection();
     const favorite = await db.collection('favorites').findOne({ city, state });
     return !!favorite;
   }
 }
 
+// Create and export a singleton instance
 const mongoService = new MongoService();
-module.exports = mongoService;  // Exporting the instance, not the class
+module.exports = mongoService;
