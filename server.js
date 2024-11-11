@@ -1,9 +1,10 @@
+// server.js
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const WeatherRoutes = require('./src/routes/WeatherRoutes');
+const mongoService = require('./src/services/MongoService');
 
-// Load environment variables
 dotenv.config();
 
 const app = express();
@@ -15,6 +16,7 @@ app.use(express.json());
 
 // Routes
 app.use('/api/weather', WeatherRoutes);
+app.use('/api/favorites', require('./src/routes/FavoritesRoutes'));
 
 // Basic error handling
 app.use((err, req, res, next) => {
@@ -22,6 +24,17 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Something went wrong!' });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+// Start server after MongoDB connection is established
+async function startServer() {
+  try {
+    await mongoService.connect();
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
+}
+
+startServer();
