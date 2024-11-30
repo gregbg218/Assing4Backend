@@ -27,7 +27,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Something went wrong!' });
 });
 
-
+app.use('/api/geocoding', require('./src/routes/GeocodingRoutes'));
 
 // Start server after MongoDB connection is established
 async function startServer() {
