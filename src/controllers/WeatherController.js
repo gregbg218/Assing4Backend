@@ -42,6 +42,34 @@ class WeatherController {
     }
   }
 
+  async searchByCity(req, res) {
+    try {
+        const { city, state } = req.query;
+        if (!city || !state) {
+            return res.status(400).json({ 
+                error: 'City and state are required' 
+            });
+        }
+
+        // Get coordinates from your existing geocoding method/API
+        // This could be an IPInfo call, Google Geocoding API, or stored coordinates
+        // Then use these coordinates with your existing weather methods
+
+        // Return the same format as your current weather endpoints
+        res.json({
+            success: true,
+            data: weatherData
+        });
+
+    } catch (error) {
+        console.error('City search error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Error fetching weather data for city'
+        });
+    }
+}
+
   async getDayWeather(req, res) {
     try {
       const { latitude, longitude, date } = req.query;

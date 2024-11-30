@@ -19,6 +19,7 @@ app.use(express.json());
 // Routes
 app.use('/api/weather', WeatherRoutes);
 app.use('/api/favorites', require('./src/routes/FavoritesRoutes'));
+app.use('/api/autocomplete', require('./src/routes/AutocompleteRoutes'));
 
 // Basic error handling
 app.use((err, req, res, next) => {
@@ -26,16 +27,19 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Something went wrong!' });
 });
 
+
+
 // Start server after MongoDB connection is established
 async function startServer() {
   try {
-    await mongoService.connect();
-    app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-    });
+      await mongoService.connect();
+      await mongoService.initializeCities(); // Add this line
+      app.listen(PORT, () => {
+          console.log(`Server running on port ${PORT}`);
+      });
   } catch (error) {
-    console.error('Failed to start server:', error);
-    process.exit(1);
+      console.error('Failed to start server:', error);
+      process.exit(1);
   }
 }
 

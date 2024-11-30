@@ -86,13 +86,14 @@ class WeatherService {
           location: `${latitude},${longitude}`,
           fields: [
             'weatherCode',
+           
             'temperatureMax',
             'temperatureMin',
-            'temperatureApparent',
+            'pressureSeaLevel',
             'windSpeed',
             'humidity',
             'visibility',
-            'cloudCover',
+            'temperature',
             'sunriseTime',
             'sunsetTime'
           ],
@@ -138,7 +139,7 @@ class WeatherService {
         status: getWeatherDescriptionFromCode(dayData.weatherCode.toString()),
         maxTemperature: dayData.temperatureMax?.toFixed(2),
         minTemperature: dayData.temperatureMin?.toFixed(2),
-        apparentTemperature: dayData.temperatureApparent?.toFixed(2) || 'N/A',
+        pressureSeaLevel: dayData.pressureSeaLevel?.toFixed(2) ,
         sunriseTime: dayData.sunriseTime ? new Date(dayData.sunriseTime).toLocaleTimeString('en-US', {
           hour: 'numeric',
           minute: 'numeric',
@@ -152,7 +153,7 @@ class WeatherService {
         humidity: dayData.humidity?.toFixed(2) || 'N/A',
         windSpeed: dayData.windSpeed?.toFixed(2),
         visibility: dayData.visibility?.toFixed(2) || 'N/A',
-        cloudCover: dayData.cloudCover || 'N/A'
+        temperature: dayData.temperature.toFixed(2)
       };
     } catch (error) {
       console.error('API Error Details:', error.response?.data);

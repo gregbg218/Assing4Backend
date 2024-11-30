@@ -19,6 +19,54 @@ class MongoService {
     }
   }
 
+  async searchCities(searchText) {
+    const db = await this.ensureConnection();
+    try {
+        console.log(`Searching for cities with text: ${searchText}`);
+        
+        const result = await db.collection('cities').find({
+            city: { $regex: `^${searchText}`, $options: 'i' }
+        })
+        .limit(5)
+        .toArray();
+        
+        console.log(`Found ${result.length} cities:`, result);
+        return result;
+    } catch (error) {
+        console.error('Search cities error:', error);
+        throw error;
+    }
+}
+
+// Also add this method to initialize cities collection if needed
+async initializeCities() {
+  const db = await this.ensureConnection();
+  const cities = await db.collection('cities').countDocuments();
+  
+  if (cities === 0) {
+      const defaultCities = [
+          { city: "Los Angeles", state: "California" },
+          { city: "Las Vegas", state: "Nevada" },
+          { city: "Seattle", state: "Washington" },
+          { city: "New York", state: "New York" },
+          { city: "Chicago", state: "Illinois" },
+          { city: "San Francisco", state: "California" },
+          { city: "San Diego", state: "California" },
+          { city: "San Jose", state: "California" },
+          { city: "Miami", state: "Florida" },
+          { city: "Boston", state: "Massachusetts" }
+      ];
+      
+      try {
+          await db.collection('cities').insertMany(defaultCities);
+          console.log('Cities collection initialized with default data');
+      } catch (error) {
+          console.error('Error initializing cities:', error);
+          throw error;
+      }
+  }
+}
+
   async ensureConnection() {
     if (!this.db) {
       await this.connect();
@@ -47,6 +95,9 @@ class MongoService {
     return !!favorite;
   }
 }
+
+
+
 
 // Create and export a singleton instance
 const mongoService = new MongoService();
