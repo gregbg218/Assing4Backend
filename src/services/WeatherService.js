@@ -86,7 +86,7 @@ class WeatherService {
           location: `${latitude},${longitude}`,
           fields: [
             'weatherCode',
-           
+            'precipitationIntensity',
             'temperatureMax',
             'temperatureMin',
             'pressureSeaLevel',
@@ -95,6 +95,8 @@ class WeatherService {
             'visibility',
             'temperature',
             'sunriseTime',
+            'cloudCover',
+            'uvIndex',
             'sunsetTime'
           ],
           units: 'imperial',
@@ -153,7 +155,11 @@ class WeatherService {
         humidity: dayData.humidity?.toFixed(2) || 'N/A',
         windSpeed: dayData.windSpeed?.toFixed(2),
         visibility: dayData.visibility?.toFixed(2) || 'N/A',
+        precipitationIntensity: dayData.precipitationIntensity.toFixed(2),
+        cloudCover: dayData.cloudCover.toFixed(2),
+        uvIndex: dayData.uvIndex.toFixed(2),
         temperature: dayData.temperature.toFixed(2)
+        
       };
     } catch (error) {
       console.error('API Error Details:', error.response?.data);
